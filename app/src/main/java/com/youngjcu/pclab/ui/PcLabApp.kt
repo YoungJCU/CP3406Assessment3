@@ -96,16 +96,21 @@ fun PcLabApp(viewModel: AppViewModel = hiltViewModel()) {
                             )
                         }
                         composable(Route.BUILDER) {
+                            val builderViewModel: BuilderViewModel = hiltViewModel()
+                            val builderState by builderViewModel.state.collectAsStateWithLifecycle()
                             BuilderScreen(
                                 mission = state.selectedMission,
-                                catalogue = state.catalogue,
+                                catalogue = builderState.catalogue ?: state.catalogue,
                                 draft = state.draft,
                                 onSelectPart = viewModel::selectPart,
                                 onSubmit = {
                                     viewModel.submitBuild()
                                     navController.navigate(Route.RESULT)
                                 },
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                apiLoading = builderState.isLoading,
+                                apiError = builderState.errorMessage,
+                                onRetryApi = builderViewModel::refreshCatalogue
                             )
                         }
                         composable(Route.RESULT) {

@@ -1,24 +1,17 @@
 package com.youngjcu.pclab.data.remote
 
-import com.squareup.moshi.Json
 import retrofit2.http.GET
-import retrofit2.http.Path
-import retrofit2.http.Query
 
 interface HardwareApi {
-    @GET("repos/{owner}/{repository}/contents/{path}")
-    suspend fun getFile(
-        @Path("owner") owner: String,
-        @Path("repository") repository: String,
-        @Path(value = "path", encoded = true) path: String,
-        @Query("ref") branch: String = "main"
-    ): GitHubFileResponse
+    @GET("data/cpu.json") suspend fun getCpus(): List<HardwarePartDto>
+    @GET("data/gpu.json") suspend fun getGpus(): List<HardwarePartDto>
+    @GET("data/motherboard.json") suspend fun getMotherboards(): List<HardwarePartDto>
+    @GET("data/ram.json") suspend fun getRam(): List<HardwarePartDto>
+    @GET("data/storage.json") suspend fun getStorage(): List<HardwarePartDto>
+    @GET("data/psu.json") suspend fun getPsus(): List<HardwarePartDto>
+    @GET("data/case.json") suspend fun getCases(): List<HardwarePartDto>
+    @GET("data/missions.json") suspend fun getMissions(): List<MissionDto>
 }
-
-data class GitHubFileResponse(
-    val content: String,
-    val encoding: String
-)
 
 data class HardwarePartDto(
     val id: Int,
@@ -35,7 +28,7 @@ data class HardwarePartDto(
     val formFactor: String? = null,
     val supportedFormFactors: List<String> = emptyList(),
     val maxGpuLengthMm: Int? = null,
-    @Json(name = "length") val gpuLengthMm: Int? = null,
+    val length: Int? = null,
     val wattage: Int? = null,
     val recommendedFor: List<String> = emptyList()
 )

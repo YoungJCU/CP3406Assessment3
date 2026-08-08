@@ -3,13 +3,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:name=".PcLabApplication"
+        android:name="com.youngjcu.pclab.PcLabApplication"
         android:allowBackup="true"
         android:label="PC Builder Lab"
         android:supportsRtl="true"
         android:theme="@style/Theme.PcLab">
         <activity
-            android:name=".MainActivity"
+            android:name="com.youngjcu.pclab.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

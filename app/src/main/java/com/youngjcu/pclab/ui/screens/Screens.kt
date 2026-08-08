@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -23,8 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -32,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -39,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -158,7 +157,10 @@ fun BuilderScreen(
     draft: BuildDraft,
     onSelectPart: (HardwarePart) -> Unit,
     onSubmit: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    apiLoading: Boolean,
+    apiError: String?,
+    onRetryApi: () -> Unit
 ) {
     Scaffold(topBar = {
         TopAppBar(
@@ -182,6 +184,15 @@ fun BuilderScreen(
                     }
                 }
             }
+            item {
+                CatalogueStatusCard(
+                    catalogue = catalogue,
+                    isLoading = apiLoading,
+                    error = apiError,
+                    onRetry = onRetryApi
+                )
+            }
+            item { Text("Choose your components", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
             items(PartCategory.entries.toList(), key = { it.name }) { category ->
                 PartSelector(
                     category = category,
@@ -200,32 +211,121 @@ fun BuilderScreen(
 }
 
 @Composable
-private fun PartSelector(category: PartCategory, selected: HardwarePart?, options: List<HardwarePart>, onSelect: (HardwarePart) -> Unit) {
-    var expanded by remember(category) { mutableStateOf(false) }
-    Card(modifier = Modifier.fillMaxWidth().clickable { expanded = true }) {
-        Column(Modifier.padding(16.dp)) {
-            Text(category.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(4.dp))
-            Text(selected?.name ?: "Tap to choose", color = if (selected == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-            selected?.let { Text("S$${it.price} • ${it.learningNote}", style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis) }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                options.forEach { part ->
-                    DropdownMenuItem(
-                        text = {
-                            Column {
-                                Text(part.name)
-                                Text("S$${part.price} • Score ${part.performanceScore}", style = MaterialTheme.typography.bodySmall)
-                            }
-                        },
-                        onClick = {
-                            onSelect(part)
-                            expanded = false
-                        }
-                    )
+private fun CatalogueStatusCard(
+    catalogue: HardwareCatalogue?,
+    isLoading: Boolean,
+    error: String?,
+    onRetry: () -> Unit
+) {
+    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            when {
+                isLoading && catalogue == null -> Text("Loading hardware options…")
+                error != null && catalogue == null -> {
+                    Text(error)
+                    OutlinedButton(onClick = onRetry) { Text("Retry catalogue") }
+                }
+                else -> {
+                    val count = catalogue?.parts?.values?.sumOf { it.size } ?: 0
+                    Text("$count hardware options loaded", fontWeight = FontWeight.Medium)
+                    Text("Tap any component card to compare options and read its learning tip.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PartSelector(category: PartCategory, selected: HardwarePart?, options: List<HardwarePart>, onSelect: (HardwarePart) -> Unit) {
+    var showPicker by remember(category) { mutableStateOf(false) }
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(enabled = options.isNotEmpty()) { showPicker = true },
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected == null) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(category.label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(4.dp))
+                if (selected == null) {
+                    Text(
+                        if (options.isEmpty()) "No options available yet" else "Tap to compare ${options.size} options",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(selected.name, fontWeight = FontWeight.Medium)
+                    Text("S$${selected.price} • ${selected.primaryDetails()}", style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Learning tip", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(selected.learningNote, style = MaterialTheme.typography.bodySmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Icon(
+                imageVector = if (selected == null) Icons.Default.Info else Icons.Default.CheckCircle,
+                contentDescription = if (selected == null) "Choose ${category.label}" else "${category.label} selected",
+                tint = if (selected == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+    if (showPicker) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(onDismissRequest = { showPicker = false }, sheetState = sheetState) {
+            ComponentPickerSheet(
+                category = category,
+                options = options,
+                selectedId = selected?.id,
+                onSelect = {
+                    onSelect(it)
+                    showPicker = false
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComponentPickerSheet(
+    category: PartCategory,
+    options: List<HardwarePart>,
+    selectedId: Int?,
+    onSelect: (HardwarePart) -> Unit
+) {
+    Column(Modifier.padding(horizontal = 20.dp)) {
+        Text("Choose ${category.label}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Compare the details, then choose the option that suits the mission.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(14.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(options, key = { it.id }) { part ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onSelect(part) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (part.id == selectedId) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(part.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("S$${part.price} • ${part.primaryDetails()}", style = MaterialTheme.typography.bodyMedium)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Learning tip", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                        Text(part.learningNote, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+            item { Spacer(Modifier.height(24.dp)) }
+        }
+    }
+}
+
+private fun HardwarePart.primaryDetails(): String = when (category) {
+    PartCategory.CPU -> listOfNotNull(socket, supportedRam).joinToString(" • ")
+    PartCategory.MOTHERBOARD -> listOfNotNull(socket, supportedRam, formFactor).joinToString(" • ")
+    PartCategory.GPU -> "${gpuLengthMm ?: 0} mm • ${power} W"
+    PartCategory.RAM -> "${ramCapacityGb ?: 0} GB • ${ramGeneration.orEmpty()}"
+    PartCategory.STORAGE -> "${storageCapacityGb ?: 0} GB ${formFactor.orEmpty()}"
+    PartCategory.PSU -> "${psuWattage ?: 0} W"
+    PartCategory.CASE -> "GPU up to ${maxGpuLengthMm ?: 0} mm"
 }
 
 @Composable

@@ -41,7 +41,7 @@ object AppModule {
             .addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
             .build()
         return Retrofit.Builder()
-            .baseUrl("https://api.github.com/")
+            .baseUrl("https://raw.githubusercontent.com/YoungJCU/CP3406-A3-API/main/")
             .client(client)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
