@@ -88,4 +88,5 @@ data class Evaluation(
             .filterNot { it.title == "Budget" || it.title == "Mission performance" }
             .none { it.status == OutcomeStatus.FAIL }
     val isWithinBudget: Boolean get() = outcomes.firstOrNull { it.title == "Budget" }?.status == OutcomeStatus.PASS
+    val isMissionComplete: Boolean get() = outcomes.none { it.status == OutcomeStatus.FAIL }
 }

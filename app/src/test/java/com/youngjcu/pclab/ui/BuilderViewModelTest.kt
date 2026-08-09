@@ -3,7 +3,9 @@ package com.youngjcu.pclab.ui
 import com.youngjcu.pclab.data.repository.HardwareRepository
 import com.youngjcu.pclab.domain.model.HardwareCatalogue
 import com.youngjcu.pclab.domain.model.HardwarePart
+import com.youngjcu.pclab.domain.model.Mission
 import com.youngjcu.pclab.domain.model.PartCategory
+import com.youngjcu.pclab.domain.model.PerformanceWeights
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -44,7 +46,13 @@ class BuilderViewModelTest {
             socket = "AM5",
             supportedRam = "DDR5"
         )
-        val viewModel = BuilderViewModel(FakeHardwareRepository(HardwareCatalogue(mapOf(PartCategory.CPU to listOf(cpu)), emptyList())))
+        val catalogue = HardwareCatalogue(
+            parts = PartCategory.entries.associateWith { category -> listOf(cpu.copy(category = category)) },
+            missions = listOf(
+                Mission(1, "Test mission", "Test", 1000, null, 50, PerformanceWeights(0.25, 0.25, 0.25, 0.25), emptyList(), "Test")
+            )
+        )
+        val viewModel = BuilderViewModel(FakeHardwareRepository(catalogue))
 
         assertFalse(viewModel.state.value.isLoading)
         assertEquals("AMD Ryzen 5 7600", viewModel.state.value.catalogue?.parts?.get(PartCategory.CPU)?.single()?.name)

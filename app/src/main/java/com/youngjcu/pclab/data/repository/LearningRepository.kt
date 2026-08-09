@@ -66,7 +66,7 @@ class RoomLearningRepository @Inject constructor(
         dao.upsertProgress(
             LearningProgressEntity(
                 missionId = mission.id,
-                isCompleted = (previous?.isCompleted == true) || (evaluation.isCompatible && evaluation.isWithinBudget),
+                isCompleted = (previous?.isCompleted == true) || evaluation.isMissionComplete,
                 bestScore = maxOf(previous?.bestScore ?: 0, evaluation.score),
                 lastAttemptedAt = now
             )

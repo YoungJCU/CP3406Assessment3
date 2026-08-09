@@ -33,7 +33,7 @@ class HomeScreenTest {
         )
 
         composeRule.setContent {
-            PcLabTheme(darkTheme = false, colourBlindMode = false) {
+            PcLabTheme(darkTheme = false, colourBlindMode = false, highContrastMode = false) {
                 HomeScreen(
                     catalogue = HardwareCatalogue(emptyMap(), listOf(mission)),
                     statistics = LearningStatistics(),

@@ -1,21 +1,23 @@
 package com.youngjcu.pclab.ui
 
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -47,6 +49,7 @@ private object Route {
 fun PcLabApp(viewModel: AppViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val navController = rememberNavController()
+    val snackbarHostState = remember { SnackbarHostState() }
     val density = LocalDensity.current
     val darkTheme = when (state.settings.theme) {
         ThemePreference.DARK -> true
@@ -54,10 +57,21 @@ fun PcLabApp(viewModel: AppViewModel = hiltViewModel()) {
         ThemePreference.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
     }
     CompositionLocalProvider(LocalDensity provides Density(density.density, state.settings.fontScale)) {
-        PcLabTheme(darkTheme = darkTheme, colourBlindMode = state.settings.colourBlindMode) {
+        PcLabTheme(
+            darkTheme = darkTheme,
+            colourBlindMode = state.settings.colourBlindMode,
+            highContrastMode = state.settings.highContrastMode
+        ) {
+            LaunchedEffect(state.feedbackMessage) {
+                state.feedbackMessage?.let { message ->
+                    snackbarHostState.showSnackbar(message)
+                    viewModel.clearFeedback()
+                }
+            }
             val navEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navEntry?.destination?.route
             Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     if (currentRoute in setOf(Route.HOME, Route.STATISTICS, Route.SETTINGS)) {
                         AppNavigationBar(currentRoute.orEmpty()) { route ->
@@ -118,6 +132,7 @@ fun PcLabApp(viewModel: AppViewModel = hiltViewModel()) {
                                 mission = state.selectedMission,
                                 evaluation = state.evaluation,
                                 onSaveFavourite = viewModel::saveFavourite,
+                                onViewStatistics = { navController.navigate(Route.STATISTICS) },
                                 onBackHome = {
                                     navController.navigate(Route.HOME) {
                                         popUpTo(Route.HOME) { inclusive = true }
@@ -132,6 +147,7 @@ fun PcLabApp(viewModel: AppViewModel = hiltViewModel()) {
                                 onThemeChange = viewModel::updateTheme,
                                 onFontScaleChange = viewModel::updateFontScale,
                                 onColourBlindChange = viewModel::updateColourBlindMode,
+                                onHighContrastChange = viewModel::updateHighContrastMode,
                                 onResetProgress = viewModel::resetProgress
                             )
                         }

@@ -44,49 +44,49 @@ class BuildEvaluator @Inject constructor() {
     }
 
     private fun socketOutcome(cpu: HardwarePart?, board: HardwarePart?) = when {
-        cpu == null || board == null -> pending("CPU socket", "Choose a CPU and motherboard to check socket compatibility.")
-        cpu.socket == board.socket -> pass("CPU socket", "${cpu.socket} matches: ${cpu.name} can be installed on ${board.name}.")
-        else -> fail("CPU socket", "${cpu.name} uses ${cpu.socket}, while ${board.name} supports ${board.socket}. Choose matching sockets.")
+        cpu == null || board == null -> pending("CPU and motherboard", "Choose a CPU and motherboard. We will check whether their connection types match.")
+        cpu.socket == board.socket -> pass("CPU and motherboard", "Both parts use ${cpu.socket}. The CPU can plug into this motherboard.")
+        else -> fail("CPU and motherboard", "This CPU plugs into ${cpu.socket}, but this motherboard has ${board.socket}. They cannot connect. Choose a ${cpu.socket} motherboard.")
     }
 
     private fun memoryOutcome(cpu: HardwarePart?, board: HardwarePart?, ram: HardwarePart?) = when {
-        cpu == null || board == null || ram == null -> pending("Memory generation", "Choose CPU, motherboard and RAM to check DDR compatibility.")
+        cpu == null || board == null || ram == null -> pending("Memory type", "Choose a CPU, motherboard and RAM. We will check whether they use the same memory type.")
         cpu.supportedRam == ram.ramGeneration && board.supportedRam == ram.ramGeneration ->
-            pass("Memory generation", "${ram.ramGeneration} memory is supported by both the CPU and motherboard.")
-        else -> fail("Memory generation", "${ram.name} is ${ram.ramGeneration}; this CPU/motherboard combination requires ${cpu.supportedRam} / ${board.supportedRam}.")
+            pass("Memory type", "The CPU, motherboard and RAM all use ${ram.ramGeneration}. This memory will fit.")
+        else -> fail("Memory type", "This RAM is ${ram.ramGeneration}, but the selected CPU and motherboard need ${cpu.supportedRam} / ${board.supportedRam}. DDR4 and DDR5 use different slots, so they cannot be mixed.")
     }
 
     private fun caseOutcome(board: HardwarePart?, case: HardwarePart?) = when {
-        board == null || case == null -> pending("Motherboard fit", "Choose a motherboard and case to check physical fit.")
-        board.formFactor in case.supportedFormFactors -> pass("Motherboard fit", "${case.name} supports the ${board.formFactor} motherboard form factor.")
-        else -> fail("Motherboard fit", "${board.formFactor} motherboards do not fit in ${case.name}; choose a compatible case.")
+        board == null || case == null -> pending("Motherboard and case", "Choose a motherboard and case. We will check their physical sizes.")
+        board.formFactor in case.supportedFormFactors -> pass("Motherboard and case", "This case has space for a ${board.formFactor} motherboard.")
+        else -> fail("Motherboard and case", "This is a ${board.formFactor} motherboard, but the case is not made for that size. Choose a case that supports ${board.formFactor}.")
     }
 
     private fun gpuFitOutcome(gpu: HardwarePart?, case: HardwarePart?) = when {
-        gpu == null || case == null -> pending("GPU clearance", "Choose a GPU and case to check graphics-card clearance.")
-        (gpu.gpuLengthMm ?: 0) <= (case.maxGpuLengthMm ?: 0) -> pass("GPU clearance", "The ${gpu.gpuLengthMm} mm GPU fits within the ${case.maxGpuLengthMm} mm case limit.")
-        else -> fail("GPU clearance", "The ${gpu.gpuLengthMm} mm GPU exceeds the ${case.maxGpuLengthMm} mm clearance of this case.")
+        gpu == null || case == null -> pending("GPU and case", "Choose a graphics card and case. We will check whether the card is short enough to fit.")
+        (gpu.gpuLengthMm ?: 0) <= (case.maxGpuLengthMm ?: 0) -> pass("GPU and case", "The graphics card is ${gpu.gpuLengthMm} mm long. The case allows up to ${case.maxGpuLengthMm} mm, so it fits.")
+        else -> fail("GPU and case", "The graphics card is ${gpu.gpuLengthMm} mm long, but the case allows only ${case.maxGpuLengthMm} mm. Choose a shorter card or a larger case.")
     }
 
     private fun powerOutcome(draft: BuildDraft, psu: HardwarePart?): RuleOutcome {
-        if (psu == null) return pending("Power headroom", "Choose a power supply to check safe wattage headroom.")
+        if (psu == null) return pending("Power supply", "Choose a power supply. We will check that it has enough extra power for the whole computer.")
         val required = ((draft.selections.values.sumOf(HardwarePart::power) + BASE_SYSTEM_POWER) * POWER_HEADROOM).toInt()
         return if ((psu.psuWattage ?: 0) >= required) {
-            pass("Power headroom", "${psu.psuWattage} W safely exceeds the estimated ${required} W requirement including 25% headroom.")
+            pass("Power supply", "The parts need about $required W after adding 25% spare power. This ${psu.psuWattage} W power supply leaves that safety room.")
         } else {
-            fail("Power headroom", "${psu.psuWattage} W is below the estimated ${required} W requirement. Choose a higher-capacity PSU.")
+            fail("Power supply", "The parts need about $required W after adding spare power, but this power supply provides only ${psu.psuWattage} W. Choose a higher number of watts.")
         }
     }
 
     private fun budgetOutcome(draft: BuildDraft, mission: Mission) = if (draft.totalCost <= mission.budget) {
-        pass("Budget", "S$${draft.totalCost} is within the S$${mission.budget} mission budget.")
+        pass("Budget", "Your build costs S$${draft.totalCost}, which is within this mission's S$${mission.budget} budget.")
     } else {
-        fail("Budget", "S$${draft.totalCost} exceeds the S$${mission.budget} mission budget by S$${draft.totalCost - mission.budget}.")
+        fail("Budget", "Your build costs S$${draft.totalCost}. That is S$${draft.totalCost - mission.budget} over this mission's S$${mission.budget} budget. Try a lower-cost part.")
     }
 
     private fun missionSocketOutcome(cpu: HardwarePart?, board: HardwarePart?, requiredSocket: String) = when {
-        cpu?.socket == requiredSocket && board?.socket == requiredSocket -> pass("Mission platform", "This mission requires $requiredSocket and both selected parts meet that requirement.")
-        else -> fail("Mission platform", "This mission requires an $requiredSocket CPU and motherboard so you can learn the current platform.")
+        cpu?.socket == requiredSocket && board?.socket == requiredSocket -> pass("Mission platform", "This task asks for the $requiredSocket platform, and both selected parts use it.")
+        else -> fail("Mission platform", "This task asks for an $requiredSocket CPU and motherboard. Pick both parts with $requiredSocket in their details.")
     }
 
     private fun performanceScore(
@@ -102,9 +102,9 @@ class BuildEvaluator @Inject constructor() {
     }
 
     private fun performanceOutcome(score: Int, mission: Mission) = if (score >= mission.minimumPerformanceScore) {
-        pass("Mission performance", "Your weighted performance score is $score / 100, meeting the mission target of ${mission.minimumPerformanceScore}.")
+        pass("Mission performance", "Your learning score is $score / 100. It meets this mission's target of ${mission.minimumPerformanceScore}.")
     } else {
-        fail("Mission performance", "Your weighted performance score is $score / 100; the mission target is ${mission.minimumPerformanceScore}. Review the components most important for this task.")
+        fail("Mission performance", "Your learning score is $score / 100, but this mission needs ${mission.minimumPerformanceScore}. Try improving the parts most important for this task.")
     }
 
     private fun pass(title: String, explanation: String) = RuleOutcome(title, OutcomeStatus.PASS, explanation)

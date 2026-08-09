@@ -14,7 +14,8 @@ import javax.inject.Singleton
 data class UserSettings(
     val theme: ThemePreference = ThemePreference.SYSTEM,
     val fontScale: Float = 1f,
-    val colourBlindMode: Boolean = false
+    val colourBlindMode: Boolean = false,
+    val highContrastMode: Boolean = false
 )
 
 enum class ThemePreference { SYSTEM, LIGHT, DARK }
@@ -24,6 +25,7 @@ interface SettingsRepository {
     suspend fun updateTheme(theme: ThemePreference)
     suspend fun updateFontScale(scale: Float)
     suspend fun updateColourBlindMode(enabled: Boolean)
+    suspend fun updateHighContrastMode(enabled: Boolean)
 }
 
 @Singleton
@@ -34,7 +36,8 @@ class DataStoreSettingsRepository @Inject constructor(
         UserSettings(
             theme = preferences[THEME]?.let { runCatching { ThemePreference.valueOf(it) }.getOrNull() } ?: ThemePreference.SYSTEM,
             fontScale = preferences[FONT_SCALE] ?: 1f,
-            colourBlindMode = preferences[COLOUR_BLIND_MODE] ?: false
+            colourBlindMode = preferences[COLOUR_BLIND_MODE] ?: false,
+            highContrastMode = preferences[HIGH_CONTRAST_MODE] ?: false
         )
     }
 
@@ -50,9 +53,14 @@ class DataStoreSettingsRepository @Inject constructor(
         dataStore.edit { it[COLOUR_BLIND_MODE] = enabled }
     }
 
+    override suspend fun updateHighContrastMode(enabled: Boolean) {
+        dataStore.edit { it[HIGH_CONTRAST_MODE] = enabled }
+    }
+
     private companion object {
         val THEME = stringPreferencesKey("theme")
         val FONT_SCALE = floatPreferencesKey("font_scale")
         val COLOUR_BLIND_MODE = booleanPreferencesKey("colour_blind_mode")
+        val HIGH_CONTRAST_MODE = booleanPreferencesKey("high_contrast_mode")
     }
 }

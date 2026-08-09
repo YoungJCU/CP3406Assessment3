@@ -45,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -225,6 +227,11 @@ private fun CatalogueStatusCard(
                     Text(error)
                     OutlinedButton(onClick = onRetry) { Text("Retry catalogue") }
                 }
+                catalogue == null || catalogue.parts.values.any { it.isEmpty() } -> {
+                    Text("No hardware options are available yet.")
+                    Text("Check your connection, then load the catalogue again.", style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onRetry) { Text("Retry catalogue") }
+                }
                 else -> {
                     val count = catalogue?.parts?.values?.sumOf { it.size } ?: 0
                     Text("$count hardware options loaded", fontWeight = FontWeight.Medium)
@@ -329,7 +336,13 @@ private fun HardwarePart.primaryDetails(): String = when (category) {
 }
 
 @Composable
-fun ResultScreen(mission: Mission?, evaluation: Evaluation?, onSaveFavourite: () -> Unit, onBackHome: () -> Unit) {
+fun ResultScreen(
+    mission: Mission?,
+    evaluation: Evaluation?,
+    onSaveFavourite: () -> Unit,
+    onViewStatistics: () -> Unit,
+    onBackHome: () -> Unit
+) {
     if (evaluation == null) {
         LoadingScreen(Modifier.fillMaxSize(), false, "Select all components before evaluating your build.", onBackHome)
         return
@@ -353,9 +366,10 @@ fun ResultScreen(mission: Mission?, evaluation: Evaluation?, onSaveFavourite: ()
         item { Text("What your build teaches", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
         items(evaluation.outcomes, key = { it.title }) { outcome -> OutcomeCard(outcome) }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onSaveFavourite) { Text("Save as favourite") }
-                Button(onClick = onBackHome) { Text("Back to home") }
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = onViewStatistics, modifier = Modifier.fillMaxWidth()) { Text("View learning statistics") }
+                OutlinedButton(onClick = onSaveFavourite, modifier = Modifier.fillMaxWidth()) { Text("Save as favourite") }
+                OutlinedButton(onClick = onBackHome, modifier = Modifier.fillMaxWidth()) { Text("Back to home") }
             }
         }
     }
@@ -364,9 +378,9 @@ fun ResultScreen(mission: Mission?, evaluation: Evaluation?, onSaveFavourite: ()
 @Composable
 private fun OutcomeCard(outcome: RuleOutcome) {
     val (icon, color, label) = when (outcome.status) {
-        OutcomeStatus.PASS -> Triple(Icons.Default.CheckCircle, MaterialTheme.colorScheme.primary, "Pass")
-        OutcomeStatus.WARNING -> Triple(Icons.Default.Info, MaterialTheme.colorScheme.tertiary, "Needs input")
-        OutcomeStatus.FAIL -> Triple(Icons.Default.Error, MaterialTheme.colorScheme.error, "Needs attention")
+        OutcomeStatus.PASS -> Triple(Icons.Default.CheckCircle, MaterialTheme.colorScheme.primary, "Compatible")
+        OutcomeStatus.WARNING -> Triple(Icons.Default.Info, MaterialTheme.colorScheme.tertiary, "Choose parts")
+        OutcomeStatus.FAIL -> Triple(Icons.Default.Error, MaterialTheme.colorScheme.error, "Change needed")
     }
     Card {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
@@ -374,6 +388,8 @@ private fun OutcomeCard(outcome: RuleOutcome) {
             Spacer(Modifier.width(12.dp))
             Column {
                 Text(outcome.title, fontWeight = FontWeight.Bold)
+                Text(label, style = MaterialTheme.typography.labelLarge, color = color)
+                Spacer(Modifier.height(4.dp))
                 Text(outcome.explanation)
             }
         }
@@ -396,6 +412,23 @@ fun StatisticsScreen(statistics: LearningStatistics, missions: List<Mission>) {
             )
         }
         item { StatCard("Average score", "${statistics.averageScore}%", Modifier.fillMaxWidth()) }
+        item { Text("Mission progress", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
+        if (missions.isEmpty()) {
+            item { Text("Mission progress will appear when the learning catalogue is available.") }
+        } else {
+            items(missions, key = { it.id }) { mission ->
+                val completed = mission.id in statistics.completedMissionIds
+                Card(colors = CardDefaults.cardColors(containerColor = if (completed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface)) {
+                    Column(Modifier.padding(16.dp)) {
+                        Text(mission.title, fontWeight = FontWeight.Bold)
+                        Text(
+                            if (completed) "Completed — all mission checks passed." else "Not completed — build and evaluate this mission to update progress.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
         item { Text("Recent builds", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold) }
         if (statistics.recentResults.isEmpty()) {
             item { Text("Complete a mission to see your decision history here.") }
@@ -433,6 +466,7 @@ fun SettingsScreen(
     onThemeChange: (ThemePreference) -> Unit,
     onFontScaleChange: (Float) -> Unit,
     onColourBlindChange: (Boolean) -> Unit,
+    onHighContrastChange: (Boolean) -> Unit,
     onResetProgress: () -> Unit
 ) {
     var showResetDialog by remember { mutableStateOf(false) }
@@ -452,7 +486,13 @@ fun SettingsScreen(
         }
         item {
             Text("Font size", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Slider(value = settings.fontScale, onValueChange = onFontScaleChange, valueRange = 1f..1.3f, steps = 2)
+            Slider(
+                value = settings.fontScale,
+                onValueChange = onFontScaleChange,
+                valueRange = 1f..1.3f,
+                steps = 2,
+                modifier = Modifier.semantics { contentDescription = "Font size" }
+            )
             Text("Current scale: ${(settings.fontScale * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
         }
         item {
@@ -461,7 +501,24 @@ fun SettingsScreen(
                     Text("Colour-blind palette", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text("Use blue, orange and green status colours alongside descriptive labels.", style = MaterialTheme.typography.bodySmall)
                 }
-                Switch(checked = settings.colourBlindMode, onCheckedChange = onColourBlindChange)
+                Switch(
+                    checked = settings.colourBlindMode,
+                    onCheckedChange = onColourBlindChange,
+                    modifier = Modifier.semantics { contentDescription = "Colour-blind palette" }
+                )
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("High contrast", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text("Use stronger black-and-white contrast for text, cards and controls.", style = MaterialTheme.typography.bodySmall)
+                }
+                Switch(
+                    checked = settings.highContrastMode,
+                    onCheckedChange = onHighContrastChange,
+                    modifier = Modifier.semantics { contentDescription = "High contrast mode" }
+                )
             }
         }
         item {

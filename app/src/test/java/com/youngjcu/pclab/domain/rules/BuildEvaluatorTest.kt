@@ -24,6 +24,7 @@ class BuildEvaluatorTest {
         val result = evaluator.evaluate(compatibleDraft(), mission)
         assertTrue(result.isCompatible)
         assertTrue(result.isWithinBudget)
+        assertTrue(result.isMissionComplete)
         assertTrue(result.performanceScore >= mission.minimumPerformanceScore)
         assertEquals(100, result.score)
     }
@@ -33,15 +34,19 @@ class BuildEvaluatorTest {
         val draft = compatibleDraft().withPart(part(PartCategory.MOTHERBOARD, socket = "AM4", supportedRam = "DDR4", formFactor = "ATX"))
         val result = evaluator.evaluate(draft, mission)
         assertFalse(result.isCompatible)
-        val socket = result.outcomes.first { it.title == "CPU socket" }
+        assertFalse(result.isMissionComplete)
+        val socket = result.outcomes.first { it.title == "CPU and motherboard" }
         assertEquals(OutcomeStatus.FAIL, socket.status)
         assertTrue(socket.explanation.contains("AM5"))
+        assertTrue(socket.explanation.contains("cannot connect"))
     }
 
     @Test
     fun `underpowered PSU fails headroom calculation`() {
         val result = evaluator.evaluate(compatibleDraft().withPart(part(PartCategory.PSU, psuWattage = 200)), mission)
-        assertEquals(OutcomeStatus.FAIL, result.outcomes.first { it.title == "Power headroom" }.status)
+        val power = result.outcomes.first { it.title == "Power supply" }
+        assertEquals(OutcomeStatus.FAIL, power.status)
+        assertTrue(power.explanation.contains("spare power"))
     }
 
     private fun compatibleDraft(): BuildDraft = BuildDraft().withPart(part(PartCategory.CPU, socket = "AM5", supportedRam = "DDR5", score = 90, power = 65))

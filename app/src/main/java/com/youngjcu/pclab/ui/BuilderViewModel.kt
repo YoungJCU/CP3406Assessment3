@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.youngjcu.pclab.data.repository.HardwareRepository
 import com.youngjcu.pclab.domain.model.HardwareCatalogue
+import com.youngjcu.pclab.domain.model.PartCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +34,18 @@ class BuilderViewModel @Inject constructor(
     fun refreshCatalogue() = viewModelScope.launch {
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         hardwareRepository.fetchCatalogue()
-            .onSuccess { catalogue -> _state.update { it.copy(catalogue = catalogue, isLoading = false) } }
+            .onSuccess { catalogue ->
+                if (catalogue.hasAllLearningData()) {
+                    _state.update { it.copy(catalogue = catalogue, isLoading = false) }
+                } else {
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "The hardware catalogue is empty or incomplete. Try loading it again."
+                        )
+                    }
+                }
+            }
             .onFailure {
                 _state.update {
                     it.copy(
@@ -43,4 +55,7 @@ class BuilderViewModel @Inject constructor(
                 }
             }
     }
+
+    private fun HardwareCatalogue.hasAllLearningData(): Boolean =
+        missions.isNotEmpty() && PartCategory.entries.all { parts[it].orEmpty().isNotEmpty() }
 }

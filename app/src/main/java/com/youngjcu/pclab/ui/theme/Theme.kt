@@ -30,9 +30,47 @@ private val DarkScheme = darkColorScheme(
     tertiary = Color(0xFFE6B8E0)
 )
 
+private val HighContrastLightScheme = lightColorScheme(
+    primary = Color.Black,
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFE5E5E5),
+    onPrimaryContainer = Color.Black,
+    secondary = Color.Black,
+    onSecondary = Color.White,
+    tertiary = Color.Black,
+    onTertiary = Color.White,
+    background = Color.White,
+    onBackground = Color.Black,
+    surface = Color.White,
+    onSurface = Color.Black,
+    error = Color(0xFF9B0000),
+    onError = Color.White,
+    outline = Color.Black
+)
+
+private val HighContrastDarkScheme = darkColorScheme(
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = Color(0xFF303030),
+    onPrimaryContainer = Color.White,
+    secondary = Color.White,
+    onSecondary = Color.Black,
+    tertiary = Color.White,
+    onTertiary = Color.Black,
+    background = Color.Black,
+    onBackground = Color.White,
+    surface = Color.Black,
+    onSurface = Color.White,
+    error = Color(0xFFFFB4AB),
+    onError = Color.Black,
+    outline = Color.White
+)
+
 @Composable
-fun PcLabTheme(darkTheme: Boolean, colourBlindMode: Boolean, content: @Composable () -> Unit) {
+fun PcLabTheme(darkTheme: Boolean, colourBlindMode: Boolean, highContrastMode: Boolean, content: @Composable () -> Unit) {
     val colours = when {
+        highContrastMode && darkTheme -> HighContrastDarkScheme
+        highContrastMode -> HighContrastLightScheme
         darkTheme -> DarkScheme
         colourBlindMode -> ColourBlindLightScheme
         else -> LightScheme
