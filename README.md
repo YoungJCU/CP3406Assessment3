@@ -8,7 +8,7 @@ PC Builder Lab is a CP3406 educational Android application for university studen
 - Plain-language feedback for CPU socket, DDR generation, motherboard/case size, GPU clearance, PSU headroom, budget and performance checks.
 - Retrofit networking that reads `YoungJCU/CP3406-A3-API` through GitHub Raw (`raw.githubusercontent.com`).
 - Room persistence for results, progress, favourites and recent build history.
-- DataStore settings for system/light/dark theme, text size and colour-blind palette.
+- DataStore settings for system/light/dark theme, text size, colour-blind palette and high contrast mode.
 - Jetpack Compose Material 3 UI, Navigation Compose, Hilt, MVVM and Repository pattern.
 - Unit tests for the pure build-evaluation rules.
 
@@ -21,8 +21,8 @@ The app needs internet only to load the learning catalogue. It never collects a 
 
 ## Testing
 
-Run local unit tests with:
+Run local unit tests from Android Studio's Gradle/Test tools. If a Gradle wrapper is included in the repository, the equivalent command is:
 
 ```bash
-gradle testDebugUnitTest
+./gradlew testDebugUnitTest
 ```

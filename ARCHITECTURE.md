@@ -18,7 +18,7 @@ The catalogue is deliberately limited to a curated set of parts. This keeps the 
 - Navigation Compose for type-safe route arguments and back-stack navigation.
 - Hilt for constructor injection.
 - ViewModel plus StateFlow for screen state and lifecycle-aware collection.
-- Retrofit with Kotlin serialization for remote catalogue retrieval.
+- Retrofit with Moshi for remote catalogue retrieval.
 - Room for learner-owned data only: progress, submitted mission results, favourite build snapshots and preferences.
 - DataStore Preferences for lightweight appearance/accessibility settings.
 - JUnit for pure logic and repository/ViewModel tests; Compose UI tests for the key learner journey.
@@ -27,52 +27,31 @@ The catalogue is deliberately limited to a curated set of parts. This keeps the 
 
 ```text
 app/
-  src/main/java/com/example/buildpcacademy/
-    BuildPcAcademyApp.kt
+  src/main/java/com/youngjcu/pclab/
+    PcLabApplication.kt
     MainActivity.kt
     di/
       AppModule.kt
-      NetworkModule.kt
-      DatabaseModule.kt
-    navigation/
-      AppNavHost.kt
-      Destinations.kt
     data/
       remote/
         HardwareApi.kt
-        HardwareDto.kt
         HardwareRemoteDataSource.kt
       local/
         AppDatabase.kt
-        dao/
-        entity/
       repository/
-        HardwareRepositoryImpl.kt
-        LearningRepositoryImpl.kt
-        SettingsRepositoryImpl.kt
-      mapper/
+        HardwareRepository.kt
+        LearningRepository.kt
+        SettingsRepository.kt
     domain/
       model/
-      repository/
-      usecase/
-        GetMissionUseCase.kt
-        EvaluateBuildUseCase.kt
-        ObserveDashboardUseCase.kt
-        SaveMissionResultUseCase.kt
-        ToggleFavouriteUseCase.kt
-        UpdateSettingsUseCase.kt
       rules/
-        CompatibilityChecker.kt
-        BudgetCalculator.kt
-        PerformanceEvaluator.kt
+        BuildEvaluator.kt
     ui/
       theme/
-      component/
-      home/
-      builder/
-      statistics/
-      settings/
-      result/
+      AppViewModel.kt
+      BuilderViewModel.kt
+      PcLabApp.kt
+      screens/
   src/test/
     domain/rules/
     data/repository/
@@ -130,7 +109,7 @@ Scoring is transparent: 40 points for compatibility, 25 for budget, 25 for missi
 
 ## 7. Remote catalogue and repository flow
 
-The catalogue comes from a small public JSON file accessed through GitHub's REST Contents API. `HardwareApi` retrieves the file metadata/content, `HardwareRemoteDataSource` decodes it, and `HardwareRepository` maps DTOs into domain parts. The initial load displays a retryable loading/error state and keeps the current in-memory catalogue during the app session.
+The catalogue comes from public JSON files accessed through GitHub Raw. `HardwareApi` retrieves each category endpoint directly, `HardwareRemoteDataSource` loads the catalogue, and `HardwareRepository` maps DTOs into domain parts. The initial load displays a retryable loading/error state and keeps the current in-memory catalogue during the app session.
 
 ```text
 GitHub REST API -> Retrofit -> HardwareRemoteDataSource
@@ -139,7 +118,7 @@ GitHub REST API -> Retrofit -> HardwareRemoteDataSource
 Room / DataStore -> Learning and Settings repositories -> ViewModels -> Compose
 ```
 
-The remote JSON is versioned in a separate public catalogue repository. It contains only fictionalised educational pricing and technical specifications. No API key, account data or device identifier is required. If the network is unavailable, the app states that a connection is required to start a new mission and provides Retry; it does not falsely claim live data.
+The remote JSON is versioned in a separate public catalogue repository: `YoungJCU/CP3406-A3-API`. It contains only fictionalised educational pricing and technical specifications. No API key, account data or device identifier is required. If the network is unavailable, the app states that a connection is required to start a new mission and provides Retry; it does not falsely claim live data.
 
 Room deliberately does **not** mirror the full hardware catalogue. That separation demonstrates the requested database use without adding an unnecessary sync engine.
 
@@ -161,7 +140,7 @@ Room deliberately does **not** mirror the full hardware catalogue. That separati
 
 - `darkMode` (`system`, `light`, `dark`), `fontScale` (`normal`, `large`, `extra_large`) and `colourBlindMode`.
 
-Room DAOs expose `Flow`, so home and statistics figures update automatically after a mission result is saved. A Room type converter serialises the small `BuildSnapshot`; snapshots make history reproducible even if the remote catalogue later changes.
+Room DAOs expose `Flow`, so home and statistics figures update automatically after a mission result is saved. A compact build-summary string is stored with each result and favourite build so history remains readable even if the remote catalogue later changes.
 
 ## 9. Screen specifications
 
